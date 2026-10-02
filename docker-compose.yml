@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: ecohealth_mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ecohealth_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./ecohealth_backend
+    container_name: ecohealth_backend
+    restart: always
+    ports:
+      - "5050:5050"
+    environment:
+      - PORT=5050
+      - MONGO_URI=mongodb://mongodb:27017/ecohealth
+      - JWT_SECRET=${JWT_SECRET}
+      - OPENAQ_API_KEY=${OPENAQ_API_KEY}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - GEOCODING_API_KEY=${GEOCODING_API_KEY}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - RISK_ENGINE_MODE=${RISK_ENGINE_MODE}
+      - FRONTEND_URL=${FRONTEND_URL}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecohealth_network
+
+  frontend:
+    build: ./ecohealth_frontend
+    container_name: ecohealth_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ecohealth_network
+
+networks:
+  ecohealth_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
